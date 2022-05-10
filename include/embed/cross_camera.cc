@@ -6,8 +6,21 @@
 
 #ifdef __linux__ // Raspberry PI
 
-class Camera::Impl {
+#include "raspicam/raspicam_cv.h"
 
+class CrossCamera::Impl {
+ public:
+  bool open() { return video_.open(); }
+  bool is_opened() const { return video_.isOpened(); }
+  void release() { video_.release(); }
+
+  double get(cv::VideoCaptureProperties pid) { return video_.get(pid); }
+
+  bool set(cv::VideoCaptureProperties pid, double value) { return video_.set(pid, value); }
+
+  void operator>>(cv::Mat& input) { video_.grab(), video_.retrieve(input); }
+ private:
+  raspicam::RaspiCam_Cv video_;
 };
 
 #else // PC

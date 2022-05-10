@@ -61,7 +61,7 @@ void ObjectDetectionModel::load_model(std::string_view model_path) {
 void ObjectDetectionModel::load_labelmap(std::string_view path) {
   std::ifstream ifs;
 
-  if (ifs.open(path); !ifs.is_open()) {
+  if (ifs.open(path.data()); !ifs.is_open()) {
     std::cerr << "Failed to open" << path << std::endl;
     std::terminate();
   }

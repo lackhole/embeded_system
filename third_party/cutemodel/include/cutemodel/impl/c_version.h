@@ -14,7 +14,9 @@
 #include "tensorflow/lite/c/builtin_op_data.h"
 #include "tensorflow/lite/c/c_api.h"
 
+#ifndef USE_XNN_DELEGATE
 #define USE_XNN_DELEGATE 1
+#endif
 
 #if USE_XNN_DELEGATE
 #include "tensorflow/lite/delegates/xnnpack/xnnpack_delegate.h"
@@ -43,7 +45,9 @@ class CuteModel::Impl {
   }
 
   void setNumThreads(int num) {
+#if USE_XNN_DELEGATE
     xnn_options.num_threads = num;
+#endif
     TfLiteInterpreterOptionsSetNumThreads(options.get(), num);
   }
 
@@ -57,8 +61,10 @@ class CuteModel::Impl {
   }
 
   void build() {
+#if USE_XNN_DELEGATE
     xnn_delegate.reset(TfLiteXNNPackDelegateCreate(&xnn_options));
     TfLiteInterpreterOptionsAddDelegate(options.get(), xnn_delegate.get());
+#endif
     interpreter.reset(TfLiteInterpreterCreate(model.get(), options.get()));
     if (interpreter == nullptr) return;
     TfLiteInterpreterAllocateTensors(interpreter.get());
@@ -167,8 +173,11 @@ class CuteModel::Impl {
   std::unique_ptr<TfLiteInterpreterOptions, decltype(&TfLiteInterpreterOptionsDelete)> options{nullptr, TfLiteInterpreterOptionsDelete};
   std::unique_ptr<TfLiteInterpreter, decltype(&TfLiteInterpreterDelete)> interpreter{nullptr, &TfLiteInterpreterDelete};
 
+#if USE_XNN_DELEGATE
   TfLiteXNNPackDelegateOptions xnn_options = TfLiteXNNPackDelegateOptionsDefault();
   std::unique_ptr<TfLiteDelegate, decltype(&TfLiteXNNPackDelegateDelete)> xnn_delegate{nullptr, &TfLiteXNNPackDelegateDelete};
+#endif
+
   #if USE_GPU_DELEGATE
     /** Tensorflow Lite GPU delegate members */
     TfLiteGpuDelegateOptionsV2 gpuDelegateOptionsV2{};

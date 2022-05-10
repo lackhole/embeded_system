@@ -3,6 +3,7 @@
 //
 
 #include "cute_model.h"
+
 #include "impl/c_version.h"
 
 namespace cute {

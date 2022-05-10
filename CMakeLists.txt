@@ -1,9 +1,15 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.15)
 project(embed)
 
 set(CMAKE_CXX_STANDARD 17)
 
+if (UNIX)
+    set(CMAKE_MODULE_PATH "/usr/local/lib/cmake/${CMAKE_MODULE_PATH}")
+    find_package(raspicam REQUIRED)
+    add_compile_definitions(USE_XNN_DELEGATE=0)
+endif()
 find_package(OpenCV REQUIRED)
+
 add_subdirectory(third_party/tflite)
 add_subdirectory(third_party/cutemodel)
 
@@ -20,5 +26,32 @@ add_executable(embed
 #    input/video_input.cc
     )
 
-target_include_directories(embed PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(embed PUBLIC ${OpenCV_LIBS} tflite cutemodel)
+
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(EMBED_INCLUDE_DIRS
+        ${CMAKE_CURRENT_LIST_DIR}/include
+        ${OpenCV_INCLUDE_DIRS})
+    set(EMBED_LIBS
+        ${OpenCV_LIBS} tflite cutemodel)
+
+elseif (UNIX)
+    set(EMBED_INCLUDE_DIRS
+        ${CMAKE_CURRENT_LIST_DIR}/include
+        ${OpenCV_INCLUDE_DIRS}
+        ${raspicam_INCLUDE_DIRS})
+    set(EMBED_LIBS
+        ${OpenCV_LIBS}
+        ${raspicam_CV_LIBS}
+        tflite
+        cutemodel
+        -lpthread
+        -ldl)
+
+else()
+    message(FATAL_ERROR "Unknown platform")
+endif ()
+
+target_include_directories(embed PUBLIC ${EMBED_INCLUDE_DIRS})
+target_link_libraries(embed PUBLIC ${EMBED_LIBS})
+#target_compile_definitions(embed PUBLIC USE_XNN_DELEGATE=0)
