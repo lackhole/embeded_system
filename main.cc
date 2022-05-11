@@ -15,6 +15,9 @@
 #include "embed/object_detection_model.h"
 #include "embed/async_camera_controller.h"
 #include "embed/date_time.h"
+
+#include "embed/drawable/drawable.h"
+
 //#include "input/camera_input.h"
 //#include "input/image_input.h"
 //#include "input/video_input.h"
@@ -50,6 +53,10 @@ int main() {
   bool pause = false;
   int criteria = 50;
 
+  Text text_fps;
+  Text text_criteria;
+  std::vector<std::pair<Text, Rectangle>> predict_result;
+
   while(!stop) {
     if (!pause) {
       camera >> frame;
@@ -57,7 +64,12 @@ int main() {
         continue;
       }
 
+      const auto t1 = std::chrono::high_resolution_clock::now();
       const auto [rects, label, scores, numDetect] = model.invoke(frame);
+      const auto t2 = std::chrono::high_resolution_clock::now();
+      const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+      cv::putText(frame, "Inference: " + std::to_string(ms) + "ms", {0, 40 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
+
 
       for (int i = 0; i < numDetect; ++i) {
         if (scores[i] < criteria * 0.01) break;
@@ -79,14 +91,16 @@ int main() {
       }
       cv::putText(frame, "Criteria: " + std::to_string(criteria * 0.01), {0, 10 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
     }
+//    text_criteria.text("Criteria: " + std::to_string(criteria * 0.01));
     const auto fps = camera.fps();
+//    text_fps.text("FPS: " + std::to_string(fps));
     cv::putText(frame, "FPS: " + std::to_string(fps), {0, 20 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
 
     const auto now = DateTime<>::now().time_zone(std::chrono::hours(9)).to_string();
     cv::putText(frame, now, {5, frame.rows - 30 * int(scale)}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {200, 200, 200}, 1, cv::LINE_AA);
 
     cv::resize(frame, view, {}, 0.5, 0.5);
-    cv::imshow("Window", view);
+    cv::imshow("Raspberry Pi", view);
     if (const auto key = cv::waitKey(16); key != -1) {
       std::cout << key << '(' << char(key) << ')' << '\n';
       switch(key) {

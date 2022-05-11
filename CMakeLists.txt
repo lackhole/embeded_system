@@ -3,7 +3,7 @@ project(embed)
 
 set(CMAKE_CXX_STANDARD 17)
 
-if (UNIX)
+if (UNIX AND NOT APPLE)
     set(CMAKE_MODULE_PATH "/usr/local/lib/cmake/${CMAKE_MODULE_PATH}")
     find_package(raspicam REQUIRED)
     add_compile_definitions(USE_XNN_DELEGATE=0)
