@@ -2,7 +2,7 @@
 // Created by YongGyu Lee on 2022/05/10.
 //
 
-#include "async_camera_controller.h"
+#include "embed/async_camera_controller.h"
 
 AsyncCameraController::AsyncCameraController(int buffer_size)
   : buffer_(buffer_size)

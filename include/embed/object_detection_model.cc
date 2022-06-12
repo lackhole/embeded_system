@@ -2,7 +2,7 @@
 // Created by YongGyu Lee on 2022/05/08.
 //
 
-#include "object_detection_model.h"
+#include "embed/object_detection_model.h"
 
 #include <cstddef>
 #include <memory>
@@ -77,6 +77,14 @@ void ObjectDetectionModel::load_labelmap(std::string_view path) {
   }
 }
 
+template<typename T>
+static void print_container(const T& t) {
+  for (const auto& elem : t) {
+    std::cout << elem << " ";
+  }
+  std::cout << '\n';
+}
+
 ObjectDetectionModel::result_type ObjectDetectionModel::invoke(const cv::Mat& image) {
   cv::resize(image, buffer_, {300, 300});
   model_.setInput(buffer_.data);
@@ -87,13 +95,20 @@ ObjectDetectionModel::result_type ObjectDetectionModel::invoke(const cv::Mat& im
   std::vector<float> score_raw = model_.getOutput<float>(2);
   std::vector<float> num_detect_raw = model_.getOutput<float>(3);
 
+//  std::cout << "==========\n";
+//  print_container(rect_raw);
+//  print_container(class_raw);
+//  print_container(score_raw);
+//  print_container(num_detect_raw);
+
   auto rect = make_reserved<std::vector<std::vector<float>>>(10);
   auto label = make_reserved<std::vector<std::string>>(10);
+  const auto num_detect = static_cast<int>(num_detect_raw[0]);
 
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < num_detect; ++i) {
     rect.emplace_back(std::vector<float>(rect_raw.data() + i * 4, rect_raw.data() + i * 4 + 4));
     label.emplace_back(labelmap_[std::floor(class_raw[i] + 1.5)]);
   }
 
-  return std::make_tuple(rect, label, std::move(score_raw), num_detect_raw[0]);
+  return std::make_tuple(rect, label, std::move(score_raw), num_detect);
 }

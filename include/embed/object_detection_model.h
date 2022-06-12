@@ -11,8 +11,9 @@
 #include <tuple>
 
 #include "opencv2/opencv.hpp"
-
 #include "cutemodel/cute_model.h"
+
+#include "embed/async_model_runner.h"
 
 class ObjectDetectionModel {
  public:
@@ -37,5 +38,7 @@ class ObjectDetectionModel {
   std::vector<std::string> labelmap_;
   cv::Mat buffer_;
 };
+
+using AsyncObjectDetector = AsyncModelRunner<ObjectDetectionModel, ObjectDetectionModel::result_type>;
 
 #endif // EMBED_OBJECT_DETECTION_MODEL_H_

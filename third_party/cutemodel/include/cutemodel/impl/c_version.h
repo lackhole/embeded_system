@@ -155,6 +155,9 @@ class CuteModel::Impl {
     log << " Number / Name / Byte / Type / Size\n";
     for (int i = 0; i < inputTensorCount(); ++i) {
       log <<  "  #" << i << ' ' << getTensorInfo(this->inputTensor(i)) << '\n';
+      const auto q = TfLiteTensorQuantizationParams(inputTensor(i));
+      log << "\tScale: " << q.scale << ", Zero point: " << q.zero_point << '\n';
+      log << "\tQuantization: " << inputTensor(i)->quantization.type << '\n';
     }
     log << '\n';
 
@@ -163,7 +166,11 @@ class CuteModel::Impl {
     log << " Number / Name / Byte / Type / Size\n";
     for (int i = 0; i < outputTensorCount(); ++i) {
       log << "  #" << i << ' ' << getTensorInfo(this->outputTensor(i)) << '\n';
+      const auto q = TfLiteTensorQuantizationParams(outputTensor(i));
+      log << "\tScale: " << q.scale << ", Zero point: " << q.zero_point << '\n';
+      log << "\tQuantization: " << outputTensor(i)->quantization.type << '\n';
     }
+
 
     return log.str();
   }
