@@ -8,6 +8,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 elseif (UNIX)
   find_package(Boost REQUIRED)
 
-  target_include_directories(boost PUBLIC ${Boost_INCLUDE_DIRS})
-  target_link_libraries(boost PUBLIC ${Boost_LIBS})
+  target_include_directories(boost INTERFACE ${Boost_INCLUDE_DIRS})
+  target_link_libraries(boost INTERFACE ${Boost_LIBS})
 endif()
