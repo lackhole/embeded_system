@@ -3,4 +3,4 @@ build
 .idea
 */.DS_Store
 
-third_party/boost
+third_party/boost/include
