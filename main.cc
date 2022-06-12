@@ -10,17 +10,12 @@
 #include "tensorflow/lite/c/c_api.h"
 #include "tensorflow/lite/c/common.h"
 
-#include "embed/object_detection_model.h"
-#include "embed/async_camera_controller.h"
-#include "embed/async_video_client.h"
-#include "embed/date_time.h"
-#include "embed/network/protocol.h"
+#include "embed/camera/async_camera_controller.h"
+#include "embed/utility/date_time.h"
+#include "embed/model/object_detection_model.h"
+#include "embed/network/async_video_client.h"
 
 #include "embed/drawable/drawable.h"
-
-//#include "input/camera_input.h"
-//#include "input/image_input.h"
-//#include "input/video_input.h"
 
 #if __linux__
 constexpr auto kPWD = "/home/pi/embeded_system";
@@ -107,6 +102,7 @@ int main() {
 
     video_client_.feed(view, now);
 
+# ifdef __APPLE__
     cv::imshow("Raspberry Pi", view);
     if (const auto key = cv::waitKey(16); key != -1) {
       std::cout << key << '(' << char(key) << ')' << '\n';
@@ -125,6 +121,7 @@ int main() {
         case '+':
           criteria = std::min(100, criteria + 10);
       }
+# endif
 //      generator->handle_key(key);
     }
   }

@@ -2,13 +2,12 @@
 // Created by YongGyu Lee on 2022/06/11.
 //
 
-#ifndef EMBED_PACKET_H_
-#define EMBED_PACKET_H_
+#ifndef EMBED_NETWORK_PACKET_H_
+#define EMBED_NETWORK_PACKET_H_
 
 #include <cstdint>
 #include <cstring>
 #include <climits>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -147,6 +146,10 @@ class Packet {
     content_size_ = new_sz;
   }
 
+  void moveTo(std::vector<char>& dst) {
+    dst = std::move(buffer_);
+  }
+
  private:
   void throw_length_error(size_t try_write_size) {
     throw std::runtime_error(
@@ -195,4 +198,4 @@ class Packet {
   size_t content_size_ = 0;
 };
 
-#endif // EMBED_PACKET_H_
+#endif // EMBED_NETWORK_PACKET_H_

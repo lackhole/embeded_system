@@ -2,8 +2,8 @@
 // Created by YongGyu Lee on 2022/06/10.
 //
 
-#ifndef EMBED_ASYNC_TCP_CLIENT_H_
-#define EMBED_ASYNC_TCP_CLIENT_H_
+#ifndef EMBED_NETWORK_ASYNC_TCP_CLIENT_H_
+#define EMBED_NETWORK_ASYNC_TCP_CLIENT_H_
 
 #include <cstddef>
 #include <string>
@@ -12,7 +12,7 @@
 #include "boost/asio.hpp"
 #include "opencv2/opencv.hpp"
 
-#include "embed/ring_buffer.h"
+#include "embed/utility/ring_buffer.h"
 
 class TcpClient {
  public:
@@ -38,4 +38,4 @@ class TcpClient {
 };
 
 
-#endif // EMBED_ASYNC_TCP_CLIENT_H_
+#endif // EMBED_NETWORK_ASYNC_TCP_CLIENT_H_

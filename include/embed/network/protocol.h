@@ -2,8 +2,8 @@
 // Created by YongGyu Lee on 2022/06/11.
 //
 
-#ifndef EMBED_PROTOCOL_H_
-#define EMBED_PROTOCOL_H_
+#ifndef EMBED_NETWORK_PROTOCOL_H_
+#define EMBED_NETWORK_PROTOCOL_H_
 
 #include <cstddef>
 #include <chrono>
@@ -16,7 +16,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "embed/frequency.h"
+#include "embed/utility/frequency.h"
 
 #include "embed/network/packet.h"
 
@@ -161,4 +161,4 @@ class Protocol {
 };
 
 
-#endif // EMBED_PROTOCOL_H_
+#endif // EMBED_NETWORK_PROTOCOL_H_

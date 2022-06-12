@@ -19,10 +19,9 @@ set(EMBED_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/include")
 
 add_executable(embed
     main.cc
-    ${EMBED_INCLUDE_DIR}/embed/async_camera_controller.cc
-    ${EMBED_INCLUDE_DIR}/embed/async_video_client.cc
-    ${EMBED_INCLUDE_DIR}/embed/cross_camera.cc
-    ${EMBED_INCLUDE_DIR}/embed/object_detection_model.cc
+    ${EMBED_INCLUDE_DIR}/embed/camera/async_camera_controller.cc
+    ${EMBED_INCLUDE_DIR}/embed/camera/cross_camera.cc
+    ${EMBED_INCLUDE_DIR}/embed/model/object_detection_model.cc
     ${EMBED_INCLUDE_DIR}/embed/network/tcp_client.cc
 
 #    input/image_input.cc
