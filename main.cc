@@ -1,3 +1,4 @@
+#include <atomic>
 #include <iostream>
 #include <string>
 #include <memory>
@@ -45,6 +46,7 @@ int main(int argc, char* argv[]) {
 
   cv::Mat view;
   RingBuffer<cv::Mat> frames;
+  std::atomic<bool> updated{false};
   cv::Mat frame;
   cv::Mat frame_prev;
   AsyncCameraController camera;
@@ -74,6 +76,7 @@ int main(int argc, char* argv[]) {
 
   const auto run_detection = [&] (cv::Mat image) {
     frames.store(std::move(image));
+    updated = true;
 //    frame = std::move(image);
   };
   auto conn = camera.add_listener(run_detection);
@@ -81,6 +84,10 @@ int main(int argc, char* argv[]) {
 
   while(!stop) {
     if (!pause) {
+      if (bool expected = true; !updated.compare_exchange_strong(expected, false)) {
+        continue;
+      }
+
       const auto frame_or_not = frames.load();
       if (!frame_or_not) {
         continue;
@@ -117,10 +124,9 @@ int main(int argc, char* argv[]) {
         }
       }
     }
+
     cv::putText(frame, "Criteria: " + std::to_string(criteria * 0.01), {0, 10 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
-//    text_criteria.text("Criteria: " + std::to_string(criteria * 0.01));
     const auto fps = camera.fps();
-//    text_fps.text("FPS: " + std::to_string(fps));
     cv::putText(frame, "FPS: " + std::to_string(fps), {0, 20 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
 
     const auto now = DateTime<>::now().time_zone(std::chrono::hours(9)).to_string();
