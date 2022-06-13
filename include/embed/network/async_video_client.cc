@@ -11,7 +11,7 @@
 
 #include "opencv2/opencv.hpp"
 
-#include "embed/utility/date_time.h"
+#include "embed/utility/logger.h"
 
 void AsyncVideoClient::feed(cv::Mat image, std::string timestamp) {
   input_.store(std::move(image), std::move(timestamp));
@@ -37,7 +37,7 @@ void AsyncVideoClient::OnWakeUp() {
           {"FileFormat", ".jpg"}
         }));
     } catch (const std::exception& e) {
-      std::cerr << DateTime<>::now(std::chrono::hours(9)).to_string() << " | " << e.what() << '\n';
+      Log.e(e.what());
     }
   }
 }

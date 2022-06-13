@@ -10,6 +10,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "embed/utility/logger.h"
+
 template<typename T, typename = void>
 struct is_reservable_impl : std::false_type {};
 
@@ -54,7 +56,7 @@ void ObjectDetectionModel::loadFromBuffer(
   model_.setNumThreads(4);
   model_.build();
 
-  std::cout << model_.summarize() << std::endl;
+  Log.d(model_.summarize());
 
   // Load labelmap
   labelmap_.clear();
@@ -80,14 +82,14 @@ void ObjectDetectionModel::load_model(std::string_view model_path) {
   model_.setNumThreads(4);
   model_.build();
 
-  std::cout << model_.summarize() << std::endl;
+  Log.d(model_.summarize());
 }
 
 void ObjectDetectionModel::load_labelmap(std::string_view path) {
   std::ifstream ifs;
 
   if (ifs.open(path.data()); !ifs.is_open()) {
-    std::cerr << "Failed to open" << path << std::endl;
+    Log.e("Failed to open ", path);
     std::terminate();
   }
 

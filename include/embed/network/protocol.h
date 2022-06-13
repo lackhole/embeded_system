@@ -16,9 +16,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "embed/utility/frequency.h"
-
 #include "embed/network/packet.h"
+#include "embed/utility/frequency.h"
+#include "embed/utility/logger.h"
 
 
 inline auto get_ms() {
@@ -70,13 +70,13 @@ class Protocol {
       .write_data(request, data_size);
 
     client.send(packet_.buffer(), packet_.size());
-    std::cout << "Sent " << packet_.size() << "bytes to the server\n";
+    Log.d("Sent ", packet_.size(), "bytes to the server.");
     client.close();
 
     packet_.clear();
     const auto len = client.receive(packet_.buffer(), packet_.capacity());
     packet_.setSize(len);
-    std::cout << "Got " << len << "bytes from the server\n";
+    Log.d("Got ", packet_.size(), "bytes from the server.");
 
     std::unordered_map<std::string, std::string> result;
 
@@ -130,14 +130,14 @@ class Protocol {
       remaining_size -= sending_size;
       sent_size_data += sending_size;
       sent_size_packet += packet_.size();
-      std::cout << "Sent " << sending_size << "bytes. (" << sending_size << '/' << data_size << ")" << std::endl;
+      Log.d("Sent ", sending_size, "bytes. (", sending_size, '/', data_size, ')');
     }
     client.close();
     const auto t2 = get_ms();
 
     const auto bit_per_sec = static_cast<double>(sent_size_packet) / (t2 - t1) * 1000;
 
-    std::cout << bit_per_sec * 0.000'001 << "MB/s\n";
+    Log.d(bit_per_sec * 0.000'001, "MB/s");
   }
 
   template<typename Client, typename T>
