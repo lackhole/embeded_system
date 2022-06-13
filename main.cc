@@ -85,8 +85,8 @@ int main(int argc, char* argv[]) {
       if (!frame_or_not) {
         continue;
       }
-      frame = *frame_or_not;
-      if (frame.empty()) {
+      
+      if (frame = *frame_or_not; frame.empty()) {
         continue;
       }
 
@@ -152,8 +152,8 @@ int main(int argc, char* argv[]) {
           break;
       }
 //      generator->handle_key(key);
-# endif
     }
+# endif
   }
 
   conn.disconnect();

@@ -43,6 +43,7 @@ class AsyncModelRunner {
   }
 
   int fps() const {
+    std::lock_guard lck(m_);
     return freq_.freq();
   }
 
@@ -60,6 +61,7 @@ class AsyncModelRunner {
   RingBuffer<output_type> output_;
 
   Frequency<> freq_;
+  mutable std::mutex m_;
 
   AsyncRunner async_runner_;
 };

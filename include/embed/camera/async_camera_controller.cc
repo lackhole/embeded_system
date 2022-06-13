@@ -8,7 +8,7 @@ void AsyncCameraController::open() {
   camera_.set( cv::CAP_PROP_FORMAT, CV_8UC3);
 //    camera_.set( cv::CAP_PROP_FRAME_WIDTH, 640 );
 //    camera_.set( cv::CAP_PROP_FRAME_HEIGHT, 480 );
-  camera_.set(cv::CAP_PROP_FPS, 60);
+  // camera_.set(cv::CAP_PROP_FPS, 60);
 //    std::cout << "CAP_PROP_ZOOM: " << Camera.get(cv::CAP_PROP_ZOOM) << std::endl;
 //    std::cout << "CAP_PROP_FOCUS: " << Camera.get(cv::CAP_PROP_FOCUS) << std::endl;
 

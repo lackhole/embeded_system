@@ -4,6 +4,15 @@
 
 #include "embed/network/async_video_client.h"
 
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
+#include "opencv2/opencv.hpp"
+
+#include "embed/utility/date_time.h"
+
 void AsyncVideoClient::feed(cv::Mat image, std::string timestamp) {
   input_.store(std::move(image), std::move(timestamp));
   async_runner_.run();
@@ -12,8 +21,8 @@ void AsyncVideoClient::feed(cv::Mat image, std::string timestamp) {
 void AsyncVideoClient::OnWakeUp() {
   const auto input = input_.load();
   if (input) {
-    const auto& image = input->get().first;
-    auto& timestamp = input->get().second;
+    const auto image = input->get().first;
+    auto timestamp = input->get().second;
 
     // TODO: Write to packet directly
     std::vector<uchar> buf;
@@ -28,7 +37,7 @@ void AsyncVideoClient::OnWakeUp() {
           {"FileFormat", ".jpg"}
         }));
     } catch (const std::exception& e) {
-      std::cerr << e.what() << '\n';
+      std::cerr << DateTime<>::now(std::chrono::hours(9)).to_string() << " | " << e.what() << '\n';
     }
   }
 }
