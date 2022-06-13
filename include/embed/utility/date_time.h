@@ -107,7 +107,7 @@ class DateTime {
 
   template<typename Duration>
   Duration cast_to() const {
-    return std::chrono::duration_cast<Duration>(now);
+    return std::chrono::duration_cast<Duration>(now_);
   }
 
  private:

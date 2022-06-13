@@ -27,9 +27,8 @@ size_t TcpClient::send(const char* data, size_t size) {
   return boost::asio::write(socket_, boost::asio::buffer(data, size), ignored_error);
 }
 
-size_t TcpClient::receive(char* dst, size_t max_size) {
-  boost::system::error_code error;
+size_t TcpClient::receive(char* dst, size_t max_size, boost::system::error_code error) {
   boost::asio::connect(socket_, endpoints_);
-  size_t len = socket_.read_some(boost::asio::buffer(dst, max_size), error);
+  size_t len = boost::asio::read(socket_, boost::asio::buffer(dst, max_size), error);
   return len;
 }

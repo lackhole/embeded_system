@@ -69,13 +69,19 @@ class Packet {
 
   explicit Packet(size_t packet_size = kPacketSize) : buffer_(packet_size) {}
 
-  Packet& write_header(const std::unordered_map<std::string, std::string>& header) {
+  static uint32_t CalcHeaderSize(const std::unordered_map<std::string, std::string>& header) {
     uint32_t header_size = to_byte(kPacketHeaderSizeBit);
     for (const auto& p : header) {
       const auto& key = p.first;
       const auto& value = p.second;
       header_size += key.size() + value.size() + 2;
     }
+
+    return header_size;
+  }
+
+  Packet& write_header(const std::unordered_map<std::string, std::string>& header) {
+    const uint32_t header_size = CalcHeaderSize(header);
 
     if (header_size > kPacketSize)
       throw_length_error(header_size);

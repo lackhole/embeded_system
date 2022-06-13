@@ -5,12 +5,12 @@
 #ifndef EMBED_UTILITY_RING_BUFFER_H_
 #define EMBED_UTILITY_RING_BUFFER_H_
 
-#include <atomic>
+#include <mutex>
 #include <optional>
 #include <type_traits>
 #include <vector>
 
-template<typename T, typename Container = std::vector<T>>
+template<typename T, typename Container = std::vector<std::optional<T>>>
 class RingBuffer {
  public:
   using value_type = T;
@@ -23,19 +23,47 @@ class RingBuffer {
     std::is_constructible_v<value_type, U&&...>
   >
   store(U&&... args) {
-    container_.emplace(container_.begin() + next(), std::forward<U>(args)...);
+    std::lock_guard lck(m_);
+    container_.emplace(container_.begin() + next(), value_type(std::forward<U>(args)...));
   }
 
-  std::optional<std::reference_wrapper<const value_type>> load() const {
+  void store(std::nullopt_t) {
+    std::lock_guard lck(m_);
+    container_.emplace(container_.begin() + next(), std::nullopt);
+  }
+
+  void store(std::optional<value_type> o) {
+    std::lock_guard lck(m_);
+    container_.emplace(container_.begin() + next(), std::move(o));
+  }
+
+  std::optional<const value_type> load() const {
+    std::lock_guard lck(m_);
     if (idx_ == -1)
       return std::nullopt;
-    return container_[idx_];
+    return std::move(container_[idx_]);
   }
-  std::optional<std::reference_wrapper<value_type>> load() {
+
+  std::optional<value_type> load() {
+    std::lock_guard lck(m_);
     if (idx_ == -1)
       return std::nullopt;
-    return container_[idx_];
+    return std::move(container_[idx_]);
   }
+
+//  std::optional<const value_type> load() const && {
+//    std::lock_guard lck(m_);
+//    if (idx_ == -1)
+//      return std::nullopt;
+//    return std::move(container_[idx_]);
+//  }
+//
+//  std::optional<value_type> load() && {
+//    std::lock_guard lck(m_);
+//    if (idx_ == -1)
+//      return std::nullopt;
+//    return std::move(container_[idx_]);
+//  }
 
   void reset() {
     idx_ = -1;
@@ -51,7 +79,8 @@ class RingBuffer {
   }
 
   container_type container_;
-  std::atomic<int> idx_{-1};
+  int idx_{-1};
+  mutable std::mutex m_;
 };
 
 #endif // EMBED_UTILITY_RING_BUFFER_H_

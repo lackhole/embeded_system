@@ -23,7 +23,7 @@ class TcpClient {
 
   size_t send(const char* data, size_t size);
 
-  size_t receive(char* dst, size_t max_size);
+  size_t receive(char* dst, size_t max_size, boost::system::error_code error);
 
   void close();
 

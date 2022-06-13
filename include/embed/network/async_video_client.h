@@ -25,13 +25,14 @@ class AsyncVideoClient {
     async_runner_.AddWakeUpListener([this](){ OnWakeUp(); });
   }
 
-  void feed(cv::Mat image, std::string timestamp);
+  void feed(cv::Mat image, std::string timestamp,
+            std::vector<std::string> detected_object);
 
 
  private:
   void OnWakeUp();
 
-  RingBuffer<std::pair<cv::Mat/*image*/, std::string/*timestamp*/>> input_{2};
+  RingBuffer<std::tuple<cv::Mat/*image*/, std::string/*timestamp*/, std::vector<std::string>>> input_{2};
   TcpClient client_;
   Protocol protocol_;
 

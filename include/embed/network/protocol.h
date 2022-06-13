@@ -16,6 +16,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "boost/asio.hpp"
+
 #include "embed/network/packet.h"
 #include "embed/utility/frequency.h"
 #include "embed/utility/logger.h"
@@ -42,7 +44,7 @@ class Protocol {
   struct valid_container : std::conjunction<has_data<T>, has_size<T>, data_is_ptr<T>> {};
 
   Protocol() = default;
-  Protocol(size_t packet_cap) : packet_(packet_cap) {}
+//  Protocol(size_t packet_cap) : packet_(packet_cap) {}
 
   // TODO: Support file
   enum DataType {
@@ -71,14 +73,36 @@ class Protocol {
 
     client.send(packet_.buffer(), packet_.size());
     Log.d("Sent ", packet_.size(), "bytes to the server.");
-    client.close();
-
-    packet_.clear();
-    const auto len = client.receive(packet_.buffer(), packet_.capacity());
-    packet_.setSize(len);
-    Log.d("Got ", packet_.size(), "bytes from the server.");
+//    client.close();
 
     std::unordered_map<std::string, std::string> result;
+
+    for (;;) {
+      boost::system::error_code error;
+
+      packet_.clear();
+      const auto len = client.receive(packet_.buffer(), packet_.capacity(), error);
+      packet_.setSize(len);
+
+      const auto header = packet_.header();
+      const auto it = header.find(kHeaderDone);
+      const auto done = it != header.end() && it->second == "1";
+
+      Log.d("Got ", len, "bytes from the server.");
+
+      for (const auto& p : header) {
+        result.emplace(p.first, p.second);
+      }
+      result["data"].insert(result["data"].end(), packet_.data().first, packet_.data().first + packet_.data().second);
+
+      if (error == boost::asio::error::eof) {
+        std::cout << "EOF: Connection closed cleanly by peer." << std::endl;
+        break;
+      }
+      if (done) {
+        break;
+      }
+    }
 
     return result;
   }
@@ -109,21 +133,25 @@ class Protocol {
     size_t sent_size_packet = 0;
 
     while (remaining_size > 0) {
-      const auto sending_size = kPacketSize > remaining_size ? remaining_size : kPacketSize;
-
       // TODO: Send some header values only once at the beginning
       key_value_pair header = {
         {kRequest, kRequestPost},
         {kHeaderTotalSize, std::to_string(data_size)},
-        {kHeaderDone, std::to_string(sending_size == remaining_size)}
+        {kHeaderDone, "0"}
       };
       if (optional_header) {
         header.merge(std::move(*optional_header));
       }
 
+      const auto header_size = Packet::CalcHeaderSize(header);
+      header[kHeaderDone] = std::to_string((header_size + remaining_size) <= packet_.capacity());
+
       packet_.clear();
-      packet_.write_header(header)
-        .write_data(data + sent_size_data, sending_size);
+      packet_.write_header(header);
+
+      const auto sending_size = packet_.remaining_size() > remaining_size ? remaining_size : packet_.remaining_size();
+
+      packet_.write_data(data + sent_size_data, sending_size);
 
       client.send(packet_.buffer(), packet_.size());
 

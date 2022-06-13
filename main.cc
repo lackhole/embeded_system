@@ -7,6 +7,7 @@
 #include "opencv2/opencv.hpp"
 
 #include "embed/camera/async_camera_controller.h"
+#include "embed/detector/movement_detector.h"
 #include "embed/detector/object_detection_model.h"
 #include "embed/network/async_video_client.h"
 #include "embed/utility/date_time.h"
@@ -28,8 +29,39 @@ enum Key {
   kSPACE = 32,
 };
 
-void run(std::string url, std::string port) {
+std::optional<std::pair<std::string, std::string>> load_model_data(std::string url, std::string port) {
+  std::string model_buffer;
+  std::string labelmap_buffer;
 
+  TcpClient client(url, port);
+  Protocol protocol;
+  auto response = protocol.Get(
+    client,
+    "model/ssd_mobilenet_v1_1_metadata_1.tflite"
+  );
+
+  auto it = response.find("data");
+  if (it == response.end()) {
+    Log.d("Failed to load model");
+    return std::nullopt;
+  }
+
+  model_buffer = std::move(it->second);
+
+  response = protocol.Get(
+    client,
+    "model/labelmap.txt"
+  );
+
+  it = response.find("data");
+  if (it == response.end()) {
+    Log.d("Failed to load labelmap");
+    return std::nullopt;
+  }
+
+  labelmap_buffer = std::move(it->second);
+
+  return std::make_pair(std::move(model_buffer), std::move(labelmap_buffer));
 }
 
 int main(int argc, char* argv[]) {
@@ -55,13 +87,20 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  const double scale = 2;
+  const double scale = 1;
 
-  AsyncObjectDetector model_runner;
+  const auto model_data = load_model_data(url, port);
+  if (!model_data)
+    return EXIT_FAILURE;
 
-  model_runner.model().load(std::string(kPWD) + "/model/ssd_mobilenet_v1_1_metadata_1.tflite",
-//  model_runner.model().load(std::string(kPWD) + "/model/quantized.tflite",
-                             std::string(kPWD) + "/model/labelmap.txt");
+  MovementDetector detector;
+
+  detector.LoadModelFromBuffer(model_data->first.data(), model_data->first.size(),
+                               model_data->second.data(), model_data->second.size());
+
+//  AsyncObjectDetector model_runner;
+//  model_runner.model().loadFromBuffer(model_data->first.data(), model_data->first.size(),
+//                                      model_data->second.data(), model_data->second.size());
 
   AsyncVideoClient video_client(url, port);
 
@@ -72,7 +111,6 @@ int main(int argc, char* argv[]) {
   Text text_fps;
   Text text_criteria;
   std::vector<std::pair<Text, Rectangle>> predict_result;
-
 
   const auto run_detection = [&] (cv::Mat image) {
     frames.store(std::move(image));
@@ -92,32 +130,30 @@ int main(int argc, char* argv[]) {
       if (!frame_or_not) {
         continue;
       }
-      
+
       if (frame = *frame_or_not; frame.empty()) {
         continue;
       }
 
-      model_runner.feed(frame);
-      if (auto result = model_runner.retrieve(); result) {
-        const auto fps = model_runner.fps();
-        cv::putText(frame, "Inference: " + std::to_string(1000/fps) + "ms", {0, 40 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
+      cv::resize(frame, view, {}, 0.5, 0.5);
 
-
+      detector.feed(frame, DateTime<>::now().milliseconds());
+      if (auto result = detector.retrieve(); result) {
         for (const auto& detection : *result) {
           if (detection.score < criteria * 0.01) continue;
 
-          const cv::Point2f tl(detection.rect[1] * frame.cols, detection.rect[0] * frame.rows);
-          const cv::Point2f br(detection.rect[3] * frame.cols, detection.rect[2] * frame.rows);
+          const cv::Point2f tl(detection.rect[1] * view.cols, detection.rect[0] * view.rows);
+          const cv::Point2f br(detection.rect[3] * view.cols, detection.rect[2] * view.rows);
 
-          cv::rectangle(frame, tl, br, {255, 0, 0}, 2);
+          cv::rectangle(view, tl, br, {255, 0, 0}, 2);
 
           char buf[10];
           std::sprintf(buf, "(%.1f%%)", detection.score * 100);
-          cv::putText(frame,
+          cv::putText(view,
                       detection.label + std::string(buf),
                       cv::Point2d(tl.x, tl.y - 4 * scale),
                       cv::FONT_ITALIC, 1 * scale, {255, 255, 255}, 3);
-          cv::putText(frame,
+          cv::putText(view,
                       detection.label + std::string(buf),
                       cv::Point2d(tl.x, tl.y - 4 * scale),
                       cv::FONT_ITALIC, 1 * scale, {0, 0, 0}, 2);
@@ -125,16 +161,18 @@ int main(int argc, char* argv[]) {
       }
     }
 
-    cv::putText(frame, "Criteria: " + std::to_string(criteria * 0.01), {0, 10 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
+    cv::putText(view, "Criteria: " + std::to_string(criteria * 0.01), {0, 10 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
+
+    const auto inference_time = detector.inference_time();
+    cv::putText(view, "Inference: " + std::to_string(inference_time) + "ms", {0, 40 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
+
     const auto fps = camera.fps();
-    cv::putText(frame, "FPS: " + std::to_string(fps), {0, 20 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
+    cv::putText(view, "FPS: " + std::to_string(fps), {0, 20 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
 
     const auto now = DateTime<>::now().time_zone(std::chrono::hours(9)).to_string();
-    cv::putText(frame, now, {5, frame.rows - 30 * int(scale)}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {200, 200, 200}, 1, cv::LINE_AA);
+    cv::putText(view, now, {5, view.rows - 30 * int(scale)}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {200, 200, 200}, 1, cv::LINE_AA);
 
-    cv::resize(frame, view, {}, 0.5, 0.5);
-
-    video_client.feed(view, now);
+//    video_client.feed(view, now, );
 
 # ifdef __APPLE__
     cv::imshow("Raspberry Pi", view);
