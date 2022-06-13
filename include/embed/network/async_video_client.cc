@@ -23,12 +23,12 @@ void AsyncVideoClient::OnWakeUp() {
   if (input) {
     const auto image = input->get().first;
     auto timestamp = input->get().second;
-
-    // TODO: Write to packet directly
-    std::vector<uchar> buf;
-    cv::imencode(".jpg", image, buf);
-
+    
     try {
+      // TODO: Write to packet directly
+      std::vector<uchar> buf;
+      cv::imencode(".jpg", image, buf);
+
       protocol_.Post(
         client_,
         buf,
