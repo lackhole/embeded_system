@@ -163,7 +163,7 @@ class MovementDetector {
   int diff_threshold_ = 40;
 
   ObjectDetectionModel model_;
-  std::atomic<milliseconds> inference_time_{-1};
+  std::atomic<int> inference_time_{-1};
   float score_threshold_ = 0.5;
   std::unordered_set<std::string> desired_object_{"person", "dog", "cat"};
   RingBuffer<ObjectDetectionModel::result_type> output_{2};
