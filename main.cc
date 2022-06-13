@@ -172,7 +172,7 @@ int main(int argc, char* argv[]) {
     const auto now = DateTime<>::now().time_zone(std::chrono::hours(9)).to_string();
     cv::putText(view, now, {5, view.rows - 30 * int(scale)}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {200, 200, 200}, 1, cv::LINE_AA);
 
-//    video_client.feed(view, now, );
+    video_client.feed(view, now, {});
 
 # ifdef __APPLE__
     cv::imshow("Raspberry Pi", view);
