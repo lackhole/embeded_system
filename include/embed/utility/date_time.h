@@ -12,7 +12,7 @@
 
 
 template<typename ...Args>
-static std::string format_string(const char* fmt, const Args&... val) {
+std::string format_string(const char* fmt, const Args&... val) {
   std::string buffer(100, '\0');
   const auto size = snprintf(NULL, 0, fmt, val...);
   buffer.resize(size);
@@ -27,6 +27,9 @@ class DateTime {
   using clock = Clock;
   using time_point = typename clock::time_point;
   using duration = typename clock::duration;
+
+  using milliseconds_type = std::chrono::milliseconds;
+  using seconds_type = std::chrono::seconds;
 
   constexpr explicit DateTime(time_point tp, duration time_zone = std::chrono::hours(0))
     : now_(tp.time_since_epoch() + time_zone), time_zone_(time_zone)
@@ -97,6 +100,14 @@ class DateTime {
 
   static DateTime now(duration time_zone = std::chrono::hours(0)) {
     return DateTime(clock::now(), std::move(time_zone));
+  }
+
+  [[nodiscard]] int64_t milliseconds() const { return cast_to<milliseconds_type>().count(); }
+  [[nodiscard]] int64_t seconds()      const { return cast_to<seconds_type>().count(); }
+
+  template<typename Duration>
+  Duration cast_to() const {
+    return std::chrono::duration_cast<Duration>(now);
   }
 
  private:

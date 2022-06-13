@@ -1,19 +1,15 @@
 #include <iostream>
-#include <filesystem>
 #include <string>
 #include <memory>
-#include <fstream>
 #include <vector>
 
 #include "opencv2/opencv.hpp"
 
-#include "tensorflow/lite/c/c_api.h"
-#include "tensorflow/lite/c/common.h"
-
 #include "embed/camera/async_camera_controller.h"
-#include "embed/utility/date_time.h"
-#include "embed/model/object_detection_model.h"
+#include "embed/detector/object_detection_model.h"
 #include "embed/network/async_video_client.h"
+#include "embed/utility/date_time.h"
+#include "embed/option_controller.h"
 
 #include "embed/drawable/drawable.h"
 
@@ -31,21 +27,41 @@ enum Key {
   kSPACE = 32,
 };
 
-int main() {
-  namespace fs = std::filesystem;
-  std::cout << fs::current_path() << std::endl;
+void run(std::string url, std::string port) {
+
+}
+
+int main(int argc, char* argv[]) {
+  std::string url;
+  std::string port;
+
+  if (argc != 3) {
+    std::cerr << "Usage: [URL] [PORT]" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  url = argv[1];
+  port = argv[2];
 
   cv::Mat view;
+  RingBuffer<cv::Mat> frames;
   cv::Mat frame;
+  cv::Mat frame_prev;
   AsyncCameraController camera;
+  camera.open();
+  if (!camera.is_open()) {
+    return EXIT_FAILURE;
+  }
 
   const double scale = 2;
 
-  AsyncObjectDetector model(std::string(kPWD) + "/model/ssd_mobilenet_v1_1_metadata_1.tflite",
-//  AsyncObjectDetector model(std::string(kPWD) + "/model/quantized.tflite",
+  AsyncObjectDetector model_runner;
+
+  model_runner.model().load(std::string(kPWD) + "/model/ssd_mobilenet_v1_1_metadata_1.tflite",
+//  model_runner.model().load(std::string(kPWD) + "/model/quantized.tflite",
                              std::string(kPWD) + "/model/labelmap.txt");
 
-  AsyncVideoClient video_client_;
+  AsyncVideoClient video_client(url, port);
 
   bool stop = false;
   bool pause = false;
@@ -55,36 +71,48 @@ int main() {
   Text text_criteria;
   std::vector<std::pair<Text, Rectangle>> predict_result;
 
+
+  const auto run_detection = [&] (cv::Mat image) {
+    frames.store(std::move(image));
+//    frame = std::move(image);
+  };
+  auto conn = camera.add_listener(run_detection);
+  camera.run();
+
   while(!stop) {
     if (!pause) {
-      camera >> frame;
+      const auto frame_or_not = frames.load();
+      if (!frame_or_not) {
+        continue;
+      }
+      frame = *frame_or_not;
       if (frame.empty()) {
         continue;
       }
 
-      model.feed(frame);
-      if (auto result = model.retrieve(); result) {
-        const auto [rects, label, scores, numDetect] = std::move(*result);
-        const auto fps = model.fps();
+      model_runner.feed(frame);
+      if (auto result = model_runner.retrieve(); result) {
+        const auto fps = model_runner.fps();
         cv::putText(frame, "Inference: " + std::to_string(1000/fps) + "ms", {0, 40 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
 
 
-        for (int i = 0; i < numDetect; ++i) {
-          if (scores[i] < criteria * 0.01) break;
-          cv::Point2d tl{rects[i][1] * frame.cols, rects[i][0] * frame.rows};
-          cv::Point2d br{rects[i][3] * frame.cols, rects[i][2] * frame.rows};
+        for (const auto& detection : *result) {
+          if (detection.score < criteria * 0.01) continue;
+
+          const cv::Point2f tl(detection.rect[1] * frame.cols, detection.rect[0] * frame.rows);
+          const cv::Point2f br(detection.rect[3] * frame.cols, detection.rect[2] * frame.rows);
 
           cv::rectangle(frame, tl, br, {255, 0, 0}, 2);
 
           char buf[10];
-          std::sprintf(buf, "(%.1f%%)", scores[i] * 100);
+          std::sprintf(buf, "(%.1f%%)", detection.score * 100);
           cv::putText(frame,
-                      label[i] + std::string(buf),
-                      cv::Point2d{rects[i][1] * frame.cols, rects[i][0] * frame.rows - 4 * scale},
+                      detection.label + std::string(buf),
+                      cv::Point2d(tl.x, tl.y - 4 * scale),
                       cv::FONT_ITALIC, 1 * scale, {255, 255, 255}, 3);
           cv::putText(frame,
-                      label[i] + std::string(buf),
-                      cv::Point2d{rects[i][1] * frame.cols, rects[i][0] * frame.rows - 4 * scale},
+                      detection.label + std::string(buf),
+                      cv::Point2d(tl.x, tl.y - 4 * scale),
                       cv::FONT_ITALIC, 1 * scale, {0, 0, 0}, 2);
         }
       }
@@ -100,7 +128,7 @@ int main() {
 
     cv::resize(frame, view, {}, 0.5, 0.5);
 
-    video_client_.feed(view, now);
+    video_client.feed(view, now);
 
 # ifdef __APPLE__
     cv::imshow("Raspberry Pi", view);
@@ -113,6 +141,7 @@ int main() {
 
         case kSPACE: // SPACE
           pause = !pause;
+          break;
 
         case '-':
           criteria = std::max(0, criteria - 10);
@@ -120,11 +149,14 @@ int main() {
 
         case '+':
           criteria = std::min(100, criteria + 10);
+          break;
       }
-# endif
 //      generator->handle_key(key);
+# endif
     }
   }
+
+  conn.disconnect();
 
 
   return 0;

@@ -2,7 +2,7 @@
 // Created by YongGyu Lee on 2022/05/08.
 //
 
-#include "embed/model/object_detection_model.h"
+#include "embed/detector/object_detection_model.h"
 
 #include <cstddef>
 #include <memory>
@@ -41,6 +41,31 @@ ObjectDetectionModel::ObjectDetectionModel(std::string_view model_path, std::str
   load(model_path, labelmap_path);
 }
 
+void ObjectDetectionModel::loadFromBuffer(
+  const char *model_buffer, size_t model_size,
+  const char *labelmap_buffer, size_t labelmap_size)
+{
+  // Load model
+  if (model_.isBuilt()) {
+    return;
+  }
+
+  model_.loadBuffer(model_buffer, model_size);
+  model_.setNumThreads(4);
+  model_.build();
+
+  std::cout << model_.summarize() << std::endl;
+
+  // Load labelmap
+  labelmap_.clear();
+  std::istringstream oss(std::string(labelmap_buffer, labelmap_size));
+
+  std::string line;
+  while (std::getline(oss, line)) {
+    labelmap_.emplace_back(std::move(line));
+  }
+}
+
 void ObjectDetectionModel::load(std::string_view model_path, std::string_view labelmap_path) {
   load_model(model_path);
   load_labelmap(labelmap_path);
@@ -71,10 +96,6 @@ void ObjectDetectionModel::load_labelmap(std::string_view path) {
   while (std::getline(ifs, line)) {
     labelmap_.emplace_back(std::move(line));
   }
-
-  for (const auto& label : labelmap_) {
-    std::cout << label << '\n';
-  }
 }
 
 template<typename T>
@@ -101,14 +122,18 @@ ObjectDetectionModel::result_type ObjectDetectionModel::invoke(const cv::Mat& im
 //  print_container(score_raw);
 //  print_container(num_detect_raw);
 
+
   auto rect = make_reserved<std::vector<std::vector<float>>>(10);
   auto label = make_reserved<std::vector<std::string>>(10);
   const auto num_detect = static_cast<int>(num_detect_raw[0]);
 
+  result_type result(num_detect);
+
   for (int i = 0; i < num_detect; ++i) {
-    rect.emplace_back(std::vector<float>(rect_raw.data() + i * 4, rect_raw.data() + i * 4 + 4));
-    label.emplace_back(labelmap_[std::floor(class_raw[i] + 1.5)]);
+    std::copy(rect_raw.data() + i * 4, rect_raw.data() + i * 4 + 4, result[i].rect);
+    result[i].label = labelmap_[std::floor(class_raw[i] + 1.5)];
+    result[i].score = score_raw[i];
   }
 
-  return std::make_tuple(rect, label, std::move(score_raw), num_detect);
+  return result;
 }

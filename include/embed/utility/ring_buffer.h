@@ -18,18 +18,12 @@ class RingBuffer {
 
   RingBuffer(size_t size = 2) : container_{size} {}
 
-  void store(T val) {
-    container_.emplace(container_.begin() + next_index(), std::move(val));
-    next();
-  }
-
   template<typename... U>
   std::enable_if_t<
     std::is_constructible_v<value_type, U&&...>
   >
   store(U&&... args) {
-    container_.emplace(container_.begin() + next_index(), std::forward<U>(args)...);
-    next();
+    container_.emplace(container_.begin() + next(), std::forward<U>(args)...);
   }
 
   std::optional<std::reference_wrapper<const value_type>> load() const {
@@ -43,15 +37,17 @@ class RingBuffer {
     return container_[idx_];
   }
 
-  int next_index() const {
-    return (idx_ + 1) % container_.size();
+  void reset() {
+    idx_ = -1;
   }
 
  private:
-  void next() {
+  int next() {
     const auto sz = container_.size();
     const int prev = idx_;
-    idx_ = (prev + 1) % sz;
+    const auto new_sz = (prev + 1) % sz;
+    idx_ = new_sz;
+    return new_sz;
   }
 
   container_type container_;

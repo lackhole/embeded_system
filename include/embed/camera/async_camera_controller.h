@@ -5,56 +5,51 @@
 #ifndef EMBED_CAMERA_ASYNC_CAMERA_CONTROLLER_H_
 #define EMBED_CAMERA_ASYNC_CAMERA_CONTROLLER_H_
 
-#include <condition_variable>
-#include <mutex>
-#include <thread>
 #include <vector>
 
+#include "boost/signals2.hpp"
 #include "opencv2/opencv.hpp"
 
-#include "cross_camera.h"
+#include "embed/camera/cross_camera.h"
+#include "embed/utility/async_runner.h"
 #include "embed/utility/frequency.h"
+#include "embed/utility/ring_buffer.h"
 
 class AsyncCameraController {
  public:
-  explicit AsyncCameraController(int buffer_size = 2);
-  ~AsyncCameraController();
+  explicit AsyncCameraController() : async_runner_(true) {
+    async_runner_.AddWakeUpListener([this](){ OnWakeUp(); });
+  }
+
+  void open();
+
+  bool is_open() const { return camera_.is_opened(); }
 
   CrossCamera& camera() { return camera_; }
   [[nodiscard]] const CrossCamera& camera() const { return camera_; }
 
-  bool run();
+  int fps() const { return freq_.freq(); }
 
-  void stop();
-
-  AsyncCameraController& operator>>(cv::Mat& frame);
-
-  bool has_error() const {
-    return error_;
+  template<typename F>
+  boost::signals2::connection add_listener(F func) {
+    return listener_.connect(std::move(func));
   }
 
-  int fps() const;
+  void run() {
+    async_runner_.run();
+  }
 
  private:
-  void init();
-
-  void RunAsync();
-
-  void join();
+  void OnWakeUp();
 
   CrossCamera camera_;
-  std::vector<cv::Mat> buffer_;
-  int buffer_index_{0};
-
-  std::thread thread_;
-  bool stop_{false};
-  bool terminate_{false};
-  bool error_{false};
-
-  mutable std::mutex mutex_;
-  std::condition_variable cv_;
+  cv::Mat frame_;
 
   Frequency<> freq_;
+  boost::signals2::signal<void(cv::Mat)> listener_;
+
+  AsyncRunner async_runner_;
 };
+
 
 #endif // EMBED_CAMERA_ASYNC_CAMERA_CONTROLLER_H_

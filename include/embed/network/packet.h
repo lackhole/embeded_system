@@ -67,8 +67,6 @@ class Packet {
   using string_type = std::basic_string<value_type>;
   using string_view_type = std::basic_string_view<value_type>;
 
-//  Packet() : buffer_(1000) {}
-
   explicit Packet(size_t packet_size = kPacketSize) : buffer_(packet_size) {}
 
   Packet& write_header(const std::unordered_map<std::string, std::string>& header) {

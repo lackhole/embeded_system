@@ -37,7 +37,9 @@ class CrossCamera::Impl {
 
   bool set(cv::VideoCaptureProperties pid, double value) { return video_.set(pid, value); }
 
-  void operator>>(cv::Mat& input) { video_ >> input; }
+  void operator>>(cv::Mat& input) {
+    video_ >> input;
+  }
  private:
   cv::VideoCapture video_;
 };

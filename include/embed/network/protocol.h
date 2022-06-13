@@ -41,6 +41,9 @@ class Protocol {
   template<typename T>
   struct valid_container : std::conjunction<has_data<T>, has_size<T>, data_is_ptr<T>> {};
 
+  Protocol() = default;
+  Protocol(size_t packet_cap) : packet_(packet_cap) {}
+
   // TODO: Support file
   enum DataType {
     kBuffer,
@@ -59,20 +62,20 @@ class Protocol {
   template<typename Client>
   [[nodiscard]] response Get(Client& client, const char* request, size_t data_size) {
     // TODO: Check size
-    packet
+    packet_
       .write_header({
         {kRequest, kRequestGet},
         {kHeaderDone, "1"}
       })
       .write_data(request, data_size);
 
-    client.send(packet.buffer(), packet.size());
-    std::cout << "Sent " << packet.size() << "bytes to the server\n";
+    client.send(packet_.buffer(), packet_.size());
+    std::cout << "Sent " << packet_.size() << "bytes to the server\n";
     client.close();
 
-    packet.clear();
-    const auto len = client.receive(packet.buffer(), packet.capacity());
-    packet.setSize(len);
+    packet_.clear();
+    const auto len = client.receive(packet_.buffer(), packet_.capacity());
+    packet_.setSize(len);
     std::cout << "Got " << len << "bytes from the server\n";
 
     std::unordered_map<std::string, std::string> result;
@@ -118,15 +121,15 @@ class Protocol {
         header.merge(std::move(*optional_header));
       }
 
-      packet.clear();
-      packet.write_header(header)
+      packet_.clear();
+      packet_.write_header(header)
         .write_data(data + sent_size_data, sending_size);
 
-      client.send(packet.buffer(), packet.size());
+      client.send(packet_.buffer(), packet_.size());
 
       remaining_size -= sending_size;
       sent_size_data += sending_size;
-      sent_size_packet += packet.size();
+      sent_size_packet += packet_.size();
       std::cout << "Sent " << sending_size << "bytes. (" << sending_size << '/' << data_size << ")" << std::endl;
     }
     client.close();
@@ -157,7 +160,7 @@ class Protocol {
   }
 
  private:
-  Packet packet;
+  Packet packet_;
 };
 
 
