@@ -8,6 +8,8 @@
 
 #include "raspicam/raspicam_cv.h"
 
+namespace watcher {
+
 class CrossCamera::Impl {
  public:
   bool open() { return video_.open(); }
@@ -22,6 +24,8 @@ class CrossCamera::Impl {
  private:
   raspicam::RaspiCam_Cv video_;
 };
+
+} // namespace watcher
 
 #else // PC
 
