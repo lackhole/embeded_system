@@ -29,6 +29,6 @@ class CrossCamera {
   class Impl* pimpl_;
 };
 
-#endif // WATCHER_CAMERA_CROSS_CAMERA_H_
-
 } // namespace watcher
+
+#endif // WATCHER_CAMERA_CROSS_CAMERA_H_
