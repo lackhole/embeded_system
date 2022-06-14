@@ -20,61 +20,23 @@ enum class async_run {
 class AsyncRunner {
  public:
   explicit AsyncRunner(bool always_run = false,
-                       async_run run_mode = async_run::deferred)
-    : always_run_(always_run), stop_(run_mode == async_run::deferred)
-  {
-    thread_ = std::thread(&AsyncRunner::RunAsync, this);
-  }
+                       async_run run_mode = async_run::deferred);
 
-  ~AsyncRunner() { join(); }
+  ~AsyncRunner();
 
   template<typename F>
   boost::signals2::connection AddWakeUpListener(F func) {
     return on_wakeup_.connect(std::move(func));
   }
 
-  void run() {
-    {
-      std::lock_guard lck(mutex_);
-      stop_ = false;
-    }
-    cv_.notify_all();
-  }
+  void run();
 
-  void stop() {
-    {
-      std::lock_guard lck(mutex_);
-      stop_ = true;
-    }
-    cv_.notify_all();
-  }
+  void stop();
 
  private:
-  void RunAsync() {
-    std::unique_lock lck(mutex_);
+  void RunAsync();
 
-    while(true) {
-      cv_.wait(lck, [&]() {
-        return !stop_ || terminate_;
-      });
-
-      if (terminate_)
-        break;
-
-      lck.unlock();
-      on_wakeup_();
-      lck.lock();
-      stop_ = !always_run_;
-    }
-  }
-
-  void join() {
-    terminate_ = true;
-    cv_.notify_all();
-    if (thread_.joinable()) {
-      thread_.join();
-    }
-  }
+  void join();
 
   std::thread thread_;
   bool stop_;

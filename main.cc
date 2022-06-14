@@ -1,5 +1,6 @@
 #include <atomic>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <memory>
 #include <vector>
@@ -35,31 +36,48 @@ std::optional<std::pair<std::string, std::string>> load_model_data(std::string u
 
   TcpClient client(url, port);
   Protocol protocol;
-  auto response = protocol.Get(
-    client,
-    "model/ssd_mobilenet_v1_1_metadata_1.tflite"
-  );
 
-  auto it = response.find("data");
-  if (it == response.end()) {
-    Log.d("Failed to load model");
-    return std::nullopt;
+  const auto retry_get = [](int wait, auto func, auto&&... args) {
+    do {
+      try {
+        return func(std::forward<decltype(args)>(args)...);
+      } catch (const std::exception& e) {
+        Log.e(e.what(), ". Retrying...");
+        std::this_thread::sleep_for(std::chrono::milliseconds(wait));
+      }
+    } while (true);
+  };
+
+  for (;;) {
+    auto response = retry_get(3000, [&]() {
+      return protocol.Get(client, "model/ssd_mobilenet_v1_1_metadata_1.tflite");
+    });
+
+    auto it = response.find("data");
+    if (it == response.end()) {
+      Log.d("Failed to load model");
+      std::this_thread::sleep_for(std::chrono::seconds(3));
+      continue;
+    }
+
+    model_buffer = std::move(it->second);
+    break;
   }
 
-  model_buffer = std::move(it->second);
+  for (;;) {
+    auto response = retry_get(3000, [&]() {
+      return protocol.Get(client, "model/labelmap.txt");
+    });
 
-  response = protocol.Get(
-    client,
-    "model/labelmap.txt"
-  );
+    auto it = response.find("data");
+    if (it == response.end()) {
+      Log.d("Failed to load labelmap");
+      continue;
+    }
 
-  it = response.find("data");
-  if (it == response.end()) {
-    Log.d("Failed to load labelmap");
-    return std::nullopt;
+    labelmap_buffer = std::move(it->second);
+    break;
   }
-
-  labelmap_buffer = std::move(it->second);
 
   return std::make_pair(std::move(model_buffer), std::move(labelmap_buffer));
 }
@@ -94,9 +112,15 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
 
   MovementDetector detector;
-
   detector.LoadModelFromBuffer(model_data->first.data(), model_data->first.size(),
                                model_data->second.data(), model_data->second.size());
+
+  std::mutex inference_result_m;
+  MovementDetector::result_or_not inference_result;
+  detector.add_listener([&](const auto& result) {
+    std::lock_guard lck(inference_result_m);
+    inference_result = result;
+  });
 
 //  AsyncObjectDetector model_runner;
 //  model_runner.model().loadFromBuffer(model_data->first.data(), model_data->first.size(),
@@ -110,7 +134,6 @@ int main(int argc, char* argv[]) {
 
   Text text_fps;
   Text text_criteria;
-  std::vector<std::pair<Text, Rectangle>> predict_result;
 
   const auto run_detection = [&] (cv::Mat image) {
     frames.store(std::move(image));
@@ -138,8 +161,14 @@ int main(int argc, char* argv[]) {
       cv::resize(frame, view, {}, 0.5, 0.5);
 
       detector.feed(frame, DateTime<>::now().milliseconds());
-      if (auto result = detector.retrieve(); result) {
-        for (const auto& detection : *result) {
+
+      decltype(inference_result) result_copy;
+      {
+        std::lock_guard lck(inference_result_m);
+        result_copy = inference_result;
+      }
+      if (result_copy) {
+        for (const auto& detection: *result_copy) {
           if (detection.score < criteria * 0.01) continue;
 
           const cv::Point2f tl(detection.rect[1] * view.cols, detection.rect[0] * view.rows);

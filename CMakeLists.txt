@@ -26,6 +26,7 @@ add_executable(embed
     ${EMBED_INCLUDE_DIR}/embed/detector/object_detector.cc
     ${EMBED_INCLUDE_DIR}/embed/network/async_video_client.cc
     ${EMBED_INCLUDE_DIR}/embed/network/tcp_client.cc
+    ${EMBED_INCLUDE_DIR}/embed/utility/async_runner.cc
 
 #    input/image_input.cc
 #    input/camera_input.cc
