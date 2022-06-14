@@ -25,8 +25,6 @@ class CrossCamera::Impl {
   raspicam::RaspiCam_Cv video_;
 };
 
-} // namespace watcher
-
 #else // PC
 
 #include "opencv2/opencv.hpp"
