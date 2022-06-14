@@ -6,6 +6,8 @@
 
 #include <cmath>
 #include <string>
+#include <optional>
+#include <vector>
 
 #include "opencv2/opencv.hpp"
 
@@ -107,6 +109,25 @@ bool MovementDetector::movement_detected(const cv::Mat& image, milliseconds time
 
   preprocess(image, current_.image);
   current_.timestamp = timestamp;
+
+  cv::absdiff(criteria_.image, current_.image, temp_);
+  cv::dilate(temp_, temp_, cv::getStructuringElement(cv::MORPH_RECT, {10, 10}));
+  cv::threshold(temp_, temp_, diff_threshold_, 255, cv::THRESH_BINARY);
+
+  std::vector<std::vector<cv::Point>> contours;
+  cv::findContours(temp_, contours, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
+
+  std::vector<cv::Rect> movement_area;
+  movement_area.reserve(contours.size());
+  for (const auto& contour : contours) {
+    if (cv::contourArea(contour) < 50) {
+      continue;
+    }
+
+    movement_area.emplace_back(cv::boundingRect(contour));
+  }
+  diffs_.store(std::move(movement_area));
+//  diffs_.store(temp_);
 
   return find_exceed(criteria_.image, current_.image, diff_threshold_);
 }

@@ -219,6 +219,14 @@ int main(int argc, char* argv[]) {
     text_time.text(now)
              .org({5, view.rows - 30 * int(scale)});
 
+    const auto mvs = detector.diffs_.load();
+    if (mvs) {
+//      cv::imshow("diff", *mvs);
+      for (const auto& rect : *mvs) {
+        cv::rectangle(view, cv::Point(rect.tl() / 2), cv::Point(rect.br()/2), {0,0,220}, 2);
+      }
+    }
+
     watcher::draw(view, text_criteria, text_inference, text_fps, text_time);
 
     video_client.feed(view, now, std::vector<std::string>());

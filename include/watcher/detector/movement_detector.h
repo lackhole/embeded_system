@@ -86,6 +86,11 @@ class MovementDetector {
   boost::signals2::signal<void(const result_or_not&)> listener_;
 
   AsyncRunner async_runner_;
+
+ public:
+  cv::Mat temp_;
+  RingBuffer<std::vector<cv::Rect>> diffs_{2};
+//  RingBuffer<cv::Mat> diffs_{2};
 };
 
 } // namespace watcher
