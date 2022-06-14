@@ -1,6 +1,7 @@
 **/cmake-build-*
 build
-.idea
-*/.DS_Store
+**/.idea
+**/.vscode
+**/.DS_Store
 
 third_party/boost/include
