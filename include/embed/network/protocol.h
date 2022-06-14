@@ -76,10 +76,9 @@ class Protocol {
 //    client.close();
 
     std::unordered_map<std::string, std::string> result;
+    boost::system::error_code error;
 
     for (;;) {
-      boost::system::error_code error;
-
       packet_.clear();
       const auto len = client.receive(packet_.buffer(), packet_.capacity(), error);
       packet_.setSize(len);
@@ -90,18 +89,28 @@ class Protocol {
 
       Log.d("Got ", len, "bytes from the server.");
 
+      // TODO: Use status code check
+      if (len < to_byte(kPacketHeaderSizeBit))
+        break;
+
       for (const auto& p : header) {
         result.emplace(p.first, p.second);
       }
+
       result["data"].insert(result["data"].end(), packet_.data().first, packet_.data().first + packet_.data().second);
 
-      if (error == boost::asio::error::eof) {
-        std::cout << "EOF: Connection closed cleanly by peer." << std::endl;
-        break;
-      }
       if (done) {
         break;
       }
+      if (error == boost::asio::error::eof) {
+        if (auto d = result.find("data"); d != result.end())
+          result.erase(d);
+        break;
+      }
+    }
+
+    if (error == boost::asio::error::eof) {
+      std::cout << "EOF: Connection closed cleanly by peer." << std::endl;
     }
 
     return result;

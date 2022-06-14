@@ -15,8 +15,8 @@ template<typename ...Args>
 std::string format_string(const char* fmt, const Args&... val) {
   std::string buffer(100, '\0');
   const auto size = snprintf(NULL, 0, fmt, val...);
-  buffer.resize(size);
   std::snprintf(const_cast<char*>(buffer.data()), size, fmt, val...);
+  buffer.resize(size - 1);
   return buffer;
 }
 

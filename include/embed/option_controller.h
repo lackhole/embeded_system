@@ -27,7 +27,7 @@ class OptionController {
  private:
   OptionController() = default;
 
-  int criteria_ = 50;
+  float criteria_ = 0.5;
   std::unordered_set<std::string> detect_obj_;
   int max_fps_ = 60;
 
