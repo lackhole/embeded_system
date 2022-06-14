@@ -5,16 +5,18 @@
 #include <memory>
 #include <vector>
 
+# ifdef __APPLE__
+#include <algorithm>
+# endif
+
 #include "opencv2/opencv.hpp"
 
-#include "embed/camera/async_camera_controller.h"
-#include "embed/detector/movement_detector.h"
-#include "embed/detector/object_detection_model.h"
-#include "embed/network/async_video_client.h"
-#include "embed/utility/date_time.h"
-#include "embed/option_controller.h"
-
-#include "embed/drawable/drawable.h"
+#include "watcher/camera/async_camera_controller.h"
+#include "watcher/detector/movement_detector.h"
+#include "watcher/detector/object_detection_model.h"
+#include "watcher/drawable/drawable.h"
+#include "watcher/network/async_video_client.h"
+#include "watcher/utility/date_time.h"
 
 #if __linux__
 constexpr auto kPWD = "/home/pi/embeded_system";
@@ -34,15 +36,15 @@ std::optional<std::pair<std::string, std::string>> load_model_data(std::string u
   std::string model_buffer;
   std::string labelmap_buffer;
 
-  TcpClient client(url, port);
-  Protocol protocol;
+  watcher::TcpClient client(url, port);
+  watcher::Protocol protocol;
 
   const auto retry_get = [](int wait, auto func, auto&&... args) {
     do {
       try {
         return func(std::forward<decltype(args)>(args)...);
       } catch (const std::exception& e) {
-        Log.e(e.what(), ". Retrying...");
+        watcher::Log.e(e.what(), ". Retrying...");
         std::this_thread::sleep_for(std::chrono::milliseconds(wait));
       }
     } while (true);
@@ -55,7 +57,7 @@ std::optional<std::pair<std::string, std::string>> load_model_data(std::string u
 
     auto it = response.find("data");
     if (it == response.end()) {
-      Log.d("Failed to load model");
+      watcher::Log.d("Failed to load model");
       std::this_thread::sleep_for(std::chrono::seconds(3));
       continue;
     }
@@ -71,7 +73,7 @@ std::optional<std::pair<std::string, std::string>> load_model_data(std::string u
 
     auto it = response.find("data");
     if (it == response.end()) {
-      Log.d("Failed to load labelmap");
+      watcher::Log.d("Failed to load labelmap");
       continue;
     }
 
@@ -95,28 +97,27 @@ int main(int argc, char* argv[]) {
   port = argv[2];
 
   cv::Mat view;
-  RingBuffer<cv::Mat> frames;
+  watcher::RingBuffer<cv::Mat> frames;
   std::atomic<bool> updated{false};
   cv::Mat frame;
   cv::Mat frame_prev;
-  AsyncCameraController camera;
+  watcher::AsyncCameraController camera;
   camera.open();
   if (!camera.is_open()) {
     return EXIT_FAILURE;
   }
 
-  const double scale = 1;
 
   const auto model_data = load_model_data(url, port);
   if (!model_data)
     return EXIT_FAILURE;
 
-  MovementDetector detector;
+  watcher::MovementDetector detector;
   detector.LoadModelFromBuffer(model_data->first.data(), model_data->first.size(),
                                model_data->second.data(), model_data->second.size());
 
   std::mutex inference_result_m;
-  MovementDetector::result_or_not inference_result;
+  watcher::MovementDetector::result_or_not inference_result;
   detector.add_listener([&](const auto& result) {
     std::lock_guard lck(inference_result_m);
     inference_result = result;
@@ -126,14 +127,35 @@ int main(int argc, char* argv[]) {
 //  model_runner.model().loadFromBuffer(model_data->first.data(), model_data->first.size(),
 //                                      model_data->second.data(), model_data->second.size());
 
-  AsyncVideoClient video_client(url, port);
+  watcher::AsyncVideoClient video_client(url, port);
 
   bool stop = false;
   bool pause = false;
   int criteria = 50;
 
-  Text text_fps;
-  Text text_criteria;
+  const double scale = 1;
+
+  watcher::Text text_fps = watcher::Text()
+    .org({0, 25 * (int)scale})
+    .color({0,255,0})
+    .font_face(cv::FONT_HERSHEY_DUPLEX)
+    .font_scale(scale * 0.5);
+  watcher::Text text_criteria = watcher::Text()
+    .org({0, 10 * (int)scale})
+    .color({0,255,0})
+    .font_face(cv::FONT_HERSHEY_DUPLEX)
+    .font_scale(scale * 0.5);
+  watcher::Text text_inference = watcher::Text()
+    .org({0, 40 * (int)scale})
+    .color({0,255,0})
+    .font_face(cv::FONT_HERSHEY_DUPLEX)
+    .font_scale(scale * 0.5);
+  watcher::Text text_time = watcher::Text()
+    .color({200,200,200})
+    .font_face(cv::FONT_HERSHEY_DUPLEX)
+    .font_scale(scale * 0.5)
+    .thickness(1)
+    .line_type(cv::LINE_AA);
 
   const auto run_detection = [&] (cv::Mat image) {
     frames.store(std::move(image));
@@ -160,7 +182,7 @@ int main(int argc, char* argv[]) {
 
       cv::resize(frame, view, {}, 0.5, 0.5);
 
-      detector.feed(frame, DateTime<>::now().milliseconds());
+      detector.feed(frame, watcher::DateTime<>::now().milliseconds());
 
       decltype(inference_result) result_copy;
       {
@@ -189,24 +211,22 @@ int main(int argc, char* argv[]) {
         }
       }
     }
+    const auto now = watcher::DateTime<>::now().time_zone(std::chrono::hours(9)).to_string();
 
-    cv::putText(view, "Criteria: " + std::to_string(criteria * 0.01), {0, 10 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
+    text_criteria.text("Criteria: " + std::to_string(criteria));
+    text_inference.text("Inference: " + std::to_string(detector.inference_time()) + "ms");
+    text_fps.text("FPS: " + std::to_string(camera.fps()));
+    text_time.text(now)
+             .org({5, view.rows - 30 * int(scale)});
 
-    const auto inference_time = detector.inference_time();
-    cv::putText(view, "Inference: " + std::to_string(inference_time) + "ms", {0, 40 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
-
-    const auto fps = camera.fps();
-    cv::putText(view, "FPS: " + std::to_string(fps), {0, 20 * (int)scale}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {0,255,0});
-
-    const auto now = DateTime<>::now().time_zone(std::chrono::hours(9)).to_string();
-    cv::putText(view, now, {5, view.rows - 30 * int(scale)}, cv::FONT_HERSHEY_DUPLEX, 0.5 * scale, {200, 200, 200}, 1, cv::LINE_AA);
+    watcher::draw(view, text_criteria, text_inference, text_fps, text_time);
 
     video_client.feed(view, now, std::vector<std::string>());
 
 # ifdef __APPLE__
     cv::imshow("Raspberry Pi", view);
     if (const auto key = cv::waitKey(16); key != -1) {
-      std::cout << key << '(' << char(key) << ')' << '\n';
+      watcher::Log.d(key, '(', char(key), ')');
       switch(key) {
         case kESC: // ESC
           stop = true;

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(embed)
+project(watcher)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -17,23 +17,18 @@ add_subdirectory(third_party/tflite)
 
 set(EMBED_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/include")
 
-add_executable(embed
+add_executable(watcher
     main.cc
-    ${EMBED_INCLUDE_DIR}/embed/camera/async_camera_controller.cc
-    ${EMBED_INCLUDE_DIR}/embed/camera/cross_camera.cc
-    ${EMBED_INCLUDE_DIR}/embed/detector/movement_detector.cc
-    ${EMBED_INCLUDE_DIR}/embed/detector/object_detection_model.cc
-    ${EMBED_INCLUDE_DIR}/embed/detector/object_detector.cc
-    ${EMBED_INCLUDE_DIR}/embed/network/async_video_client.cc
-    ${EMBED_INCLUDE_DIR}/embed/network/tcp_client.cc
-    ${EMBED_INCLUDE_DIR}/embed/utility/async_runner.cc
-
-#    input/image_input.cc
-#    input/camera_input.cc
-#    input/video_input.cc
+    ${EMBED_INCLUDE_DIR}/watcher/camera/async_camera_controller.cc
+    ${EMBED_INCLUDE_DIR}/watcher/camera/cross_camera.cc
+    ${EMBED_INCLUDE_DIR}/watcher/detector/movement_detector.cc
+    ${EMBED_INCLUDE_DIR}/watcher/detector/object_detection_model.cc
+    ${EMBED_INCLUDE_DIR}/watcher/network/async_video_client.cc
+    ${EMBED_INCLUDE_DIR}/watcher/network/tcp_client.cc
+    ${EMBED_INCLUDE_DIR}/watcher/utility/async_runner.cc
     )
 
-#target_compile_options(embed PRIVATE -Werror=return-type)
+target_compile_options(watcher PRIVATE -Werror=return-type)
 
 message("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 
@@ -68,6 +63,5 @@ else()
     message(FATAL_ERROR "Unknown platform")
 endif ()
 
-target_include_directories(embed PUBLIC ${EMBED_INCLUDE_DIRS})
-target_link_libraries(embed PUBLIC ${EMBED_LIBS})
-#target_compile_definitions(embed PUBLIC USE_XNN_DELEGATE=0)
+target_include_directories(watcher PUBLIC ${EMBED_INCLUDE_DIRS})
+target_link_libraries(watcher PUBLIC ${EMBED_LIBS})
