@@ -33,13 +33,18 @@ class ObjectDetectionModel {
 
   result_type invoke(const cv::Mat& image);
 
+  const cv::Size& input_size() const;
+
  private:
   void load_model(std::string_view path);
   void load_labelmap(std::string_view path);
 
+  void build();
+
   cute::CuteModel model_;
   std::vector<std::string> labelmap_;
   cv::Mat buffer_;
+  cv::Size input_size_;
 };
 
 } // namespace watcher

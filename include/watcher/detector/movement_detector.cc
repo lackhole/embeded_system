@@ -74,10 +74,10 @@ MovementDetector::result_or_not MovementDetector::invoke(const cv::Mat& image, m
   {
     std::lock_guard lck(m_);
     for (const auto& detection : detection_result) {
-      if (auto it = desired_object_.find(detection.label);
-        it != desired_object_.end() && detection.score >= score_threshold_) {
+//      if (auto it = desired_object_.find(detection.label);
+//        it != desired_object_.end() && detection.score >= score_threshold_) {
         out_result.emplace_back(detection);
-      }
+//      }
     }
   }
   last_detection_ = timestamp;
@@ -110,9 +110,12 @@ bool MovementDetector::movement_detected(const cv::Mat& image, milliseconds time
   preprocess(image, current_.image);
   current_.timestamp = timestamp;
 
+  auto m = cv::mean(image);
+  auto avg = (m[0]+m[1]+m[2])/3;
+
   cv::absdiff(criteria_.image, current_.image, temp_);
   cv::dilate(temp_, temp_, cv::getStructuringElement(cv::MORPH_RECT, {10, 10}));
-  cv::threshold(temp_, temp_, diff_threshold_, 255, cv::THRESH_BINARY);
+  cv::threshold(temp_, temp_, avg * 0.38, 255, cv::THRESH_BINARY);
 
   std::vector<std::vector<cv::Point>> contours;
   cv::findContours(temp_, contours, cv::RETR_LIST, cv::CHAIN_APPROX_NONE);
@@ -126,7 +129,8 @@ bool MovementDetector::movement_detected(const cv::Mat& image, milliseconds time
 
     movement_area.emplace_back(cv::boundingRect(contour));
   }
-  diffs_.store(std::move(movement_area));
+  bbox_(movement_area);
+//  diffs_.store(std::move(movement_area));
 //  diffs_.store(temp_);
 
   return find_exceed(criteria_.image, current_.image, diff_threshold_);

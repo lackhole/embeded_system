@@ -89,8 +89,7 @@ class MovementDetector {
 
  public:
   cv::Mat temp_;
-  RingBuffer<std::vector<cv::Rect>> diffs_{2};
-//  RingBuffer<cv::Mat> diffs_{2};
+  boost::signals2::signal<void(const std::vector<cv::Rect>&)> bbox_;
 };
 
 } // namespace watcher
