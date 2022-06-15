@@ -222,8 +222,6 @@ bool run(const std::string& url, const std::string& port) {
 
           cv::rectangle(view, tl, br, {255, 0, 0}, 2);
 
-          std::cerr << detection.label << std::endl;
-
           char buf[10];
           std::sprintf(buf, "(%.1f%%)", detection.score * 100);
           cv::putText(view,
@@ -251,7 +249,7 @@ bool run(const std::string& url, const std::string& port) {
       bbox_copy = bbox;
     }
     for (const auto& rect : bbox_copy) {
-      cv::rectangle(view, cv::Point(rect.tl() / 2), cv::Point(rect.br()/2), {0,0,220}, 2);
+      cv::rectangle(view, cv::Point(rect.tl() / 2), cv::Point(rect.br()/2), {0,0,220}, 1);
     }
 
     watcher::draw(view, text_criteria, text_inference, text_fps, text_time);

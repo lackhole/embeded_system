@@ -6,9 +6,10 @@ set(CMAKE_CXX_STANDARD 17)
 if (UNIX AND NOT APPLE)
     set(CMAKE_MODULE_PATH "/usr/local/lib/cmake/${CMAKE_MODULE_PATH}")
     find_package(raspicam REQUIRED)
+    add_compile_definitions(USE_XNN_DELEGATE=1)
+else()
     add_compile_definitions(USE_XNN_DELEGATE=0)
 endif()
-add_compile_definitions(USE_XNN_DELEGATE=0)
 find_package(OpenCV REQUIRED)
 
 add_subdirectory(third_party/boost)
@@ -28,7 +29,7 @@ add_executable(watcher
     ${EMBED_INCLUDE_DIR}/watcher/utility/async_runner.cc
     )
 
-target_compile_options(watcher PRIVATE -Werror=return-type)
+target_compile_options(watcher PRIVATE -Werror=return-type -Wno-psabi)
 
 message("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 
