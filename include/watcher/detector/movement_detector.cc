@@ -11,6 +11,7 @@
 #include "opencv2/opencv.hpp"
 
 #include "watcher/utility/date_time.h"
+#include "watcher/utility/logger.h"
 
 namespace watcher {
 
@@ -84,17 +85,17 @@ MovementDetector::result_or_not MovementDetector::invoke(const cv::Mat& image, m
   }
   last_detection_ = timestamp;
 
-  if (out_result.empty() || criteria_.timestamp + run_model_override_t_ < timestamp) {
+  if (criteria_.timestamp + run_model_override_t_ < timestamp) {
     preprocess(image, criteria_.image);
     criteria_.timestamp = timestamp;
-    inference_time_ = static_cast<int>(DateTime<>::now().milliseconds() - t0);
+  }
+  inference_time_ = static_cast<int>(DateTime<>::now().milliseconds() - t0);
+
+  if (out_result.empty()) {
     return std::nullopt;
   }
 
   object_detected_ = true;
-
-  inference_time_ = static_cast<int>(DateTime<>::now().milliseconds() - t0);
-
   return out_result;
 }
 
