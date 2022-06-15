@@ -89,33 +89,15 @@ std::optional<std::pair<std::string, std::string>> load_model_data(std::string u
   return std::make_pair(std::move(model_buffer), std::move(labelmap_buffer));
 }
 
-std::optional<std::string> load_option(const std::string& url, const std::string& port, const std::string& option) {
-  watcher::TcpClient client(url, port);
-  watcher::Protocol protocol;
+std::string remove_trailing(const std::string& s) {
+  std::string r = s;
+  if (!r.empty() &&
+    (r[r.size() - 1] == '\r' || r[r.size() - 1] == '\n' ||
+      r[r.size() - 1] == ' ' || r[r.size() - 1] == '\t' ||
+      r[r.size() - 1] == '\0'))
+    r.erase(r.size() - 1);
 
-  try {
-    auto response = protocol.Get(client, "settings/" + option);
-
-
-    auto it = response.find("data");
-    if (it == response.end()) {
-      watcher::Log.d("Failed to load option ", option);
-    } else {
-      watcher::Log.d("Loaded option ", option, " : ", it->second);
-      auto r = std::move(it->second);
-      if (!r.empty() &&
-          (r[r.size() - 1] == '\r' || r[r.size() - 1] == '\n' ||
-          r[r.size() - 1] == ' ' || r[r.size() - 1] == '\t' ||
-          r[r.size() - 1] == '\0'))
-        r.erase(r.size() - 1);
-
-      return std::move(r);
-    }
-  } catch (const std::exception& e) {
-    watcher::Log.e(e.what());
-  }
-
-  return std::nullopt;
+  return std::move(r);
 }
 
 bool run(const std::string& url, const std::string& port) {
@@ -150,7 +132,20 @@ bool run(const std::string& url, const std::string& port) {
 //  model_runner.model().loadFromBuffer(model_data->first.data(), model_data->first.size(),
 //                                      model_data->second.data(), model_data->second.size());
 
+  std::atomic<bool> restart{false};
+
   watcher::AsyncVideoClient video_client(url, port);
+  boost::signals2::scoped_connection conn_g = video_client.AddGetListener([&](auto response) {
+    auto it = response.find("data");
+    if (it == response.end()) {
+      return;
+    }
+    const auto r = remove_trailing(it->second);
+    watcher::Log.d("Loaded option settings/restart : ", r);
+
+    if (r == "1")
+      restart = true;
+  }, "settings/restart");
 
   bool stop = false;
   bool pause = false;
@@ -192,6 +187,9 @@ bool run(const std::string& url, const std::string& port) {
   detector.bbox_.connect([&](const auto& b) { std::lock_guard lck(bbox_m); bbox = b; });
 
   while(!stop) {
+    if (restart)
+      return true;
+
     if (!pause) {
       if (bool expected = true; !updated.compare_exchange_strong(expected, false)) {
         continue;
@@ -255,10 +253,6 @@ bool run(const std::string& url, const std::string& port) {
     watcher::draw(view, text_criteria, text_inference, text_fps, text_time);
 
     video_client.feed(view, now, std::vector<std::string>());
-
-    if (auto o = load_option(url, port, "restart"); o && *o == "1") {
-      return true;
-    }
 
 # ifdef __APPLE__
     cv::imshow("Raspberry Pi", view);

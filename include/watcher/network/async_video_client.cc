@@ -49,6 +49,8 @@ void AsyncVideoClient::OnWakeUp() {
       Log.e(e.what());
     }
   }
+
+  get_listener_();
 }
 
 } // namespace watcher
