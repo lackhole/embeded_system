@@ -143,9 +143,23 @@ bool run(const std::string& url, const std::string& port) {
     const auto r = remove_trailing(it->second);
     watcher::Log.d("Loaded option settings/restart : ", r);
 
-    if (r == "1")
-      restart = true;
+    restart = (r == "1");
   }, "settings/restart");
+
+  boost::signals2::scoped_connection conn_s = video_client.AddGetListener([&](auto response) {
+    auto it = response.find("data");
+    if (it == response.end()) {
+      return;
+    }
+    const auto r = remove_trailing(it->second);
+
+    try {
+      const auto s = std::stof(r);
+      if (0 <= s && s <= 1)
+        detector.score_threshold(s);
+    } catch (...) {}
+
+  }, "settings/score");
 
   bool stop = false;
   bool pause = false;
@@ -299,7 +313,7 @@ int main(int argc, char* argv[]) {
 
   while (true) {
     if (run(url, port)) {
-      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
     break;
