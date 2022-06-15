@@ -8,18 +8,6 @@
 
 namespace cute {
 
-std::string tensorName(const Tensor* tensor) {
-  return ((const TfLiteTensor *)tensor)->name;
-}
-
-std::vector<int> tensorDims(const Tensor* tensor) {
-  auto dims = ((const TfLiteTensor *)tensor)->dims;
-  std::vector<int> res(dims->size);
-  for (int i = 0; i < dims->size; ++i)
-    res[i] = dims->data[i];
-  return res;
-}
-
 CuteModel::CuteModel() : pImpl(nullptr) {
   pImpl = new Impl();
 }
@@ -70,16 +58,16 @@ void CuteModel::copyOutput(int index, void *dst) const {
   return pImpl->copyOutput(index, dst);
 }
 
-Tensor* CuteModel::inputTensor(int index) {
-  return reinterpret_cast<Tensor *>(pImpl->inputTensor(index));
+TfLiteTensor* CuteModel::inputTensor(int index) {
+  return pImpl->inputTensor(index);
 }
 
-const Tensor* CuteModel::inputTensor(int index) const {
-  return reinterpret_cast<const Tensor *>(pImpl->inputTensor(index));
+const TfLiteTensor* CuteModel::inputTensor(int index) const {
+  return pImpl->inputTensor(index);
 }
 
-const Tensor* CuteModel::outputTensor(int index) const {
-  return reinterpret_cast<const Tensor *>(pImpl->outputTensor(index));
+const TfLiteTensor* CuteModel::outputTensor(int index) const {
+  return pImpl->outputTensor(index);
 }
 
 std::vector<int> CuteModel::inputTensorDims(int index) const {

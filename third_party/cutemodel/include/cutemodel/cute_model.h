@@ -2,19 +2,16 @@
 // Created by YongGyu Lee on 2021/03/04.
 //
 
-#ifndef SEESO_CORE_CORE_GAZE_TRACKER_NEURAL_ENGINE_CUTEMODEL_CUTE_MODEL_H_
-#define SEESO_CORE_CORE_GAZE_TRACKER_NEURAL_ENGINE_CUTEMODEL_CUTE_MODEL_H_
+#ifndef CUTEMODEL_CUTE_MODEL_H_
+#define CUTEMODEL_CUTE_MODEL_H_
 
 #include <cstddef>
 #include <string>
 #include <vector>
 
+#include "tensorflow/lite/c/common.h"
+
 namespace cute {
-
-struct Tensor;
-
-std::string tensorName(const Tensor* tensor);
-std::vector<int> tensorDims(const Tensor* tensor);
 
 // Pimpl and builder pattern
 
@@ -66,9 +63,9 @@ class CuteModel {
 
   void invoke();
 
-  Tensor* inputTensor(int index);
-  const Tensor* inputTensor(int index) const;
-  const Tensor* outputTensor(int index) const;
+  TfLiteTensor* inputTensor(int index);
+  const TfLiteTensor* inputTensor(int index) const;
+  const TfLiteTensor* outputTensor(int index) const;
 
   std::vector<int> inputTensorDims(int index) const;
   std::vector<int> outputTensorDims(int index) const;
@@ -109,4 +106,4 @@ class CuteModelBuilder {
 
 } // namespace cute
 
-#endif // SEESO_CORE_CORE_GAZE_TRACKER_NEURAL_ENGINE_CUTEMODEL_CUTE_MODEL_H_
+#endif // CUTEMODEL_CUTE_MODEL_H_
