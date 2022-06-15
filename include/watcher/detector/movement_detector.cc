@@ -6,7 +6,6 @@
 
 #include <cmath>
 #include <string>
-#include <optional>
 #include <vector>
 
 #include "opencv2/opencv.hpp"
@@ -76,13 +75,16 @@ MovementDetector::result_or_not MovementDetector::invoke(const cv::Mat& image, m
     for (const auto& detection : detection_result) {
 //      if (auto it = desired_object_.find(detection.label);
 //        it != desired_object_.end() && detection.score >= score_threshold_) {
+      //   out_result.emplace_back(detection);
+      if (detection.score >= score_threshold_) {
         out_result.emplace_back(detection);
+      }
 //      }
     }
   }
   last_detection_ = timestamp;
 
-  if (out_result.empty()) {
+  if (out_result.empty() || criteria_.timestamp + run_model_override_t_ < timestamp) {
     preprocess(image, criteria_.image);
     criteria_.timestamp = timestamp;
     inference_time_ = static_cast<int>(DateTime<>::now().milliseconds() - t0);
@@ -97,9 +99,6 @@ MovementDetector::result_or_not MovementDetector::invoke(const cv::Mat& image, m
 }
 
 bool MovementDetector::movement_detected(const cv::Mat& image, milliseconds timestamp) {
-  if (object_detected_ || timestamp > last_detection_ + run_model_override_t_) {
-    return true;
-  }
 
   if (criteria_.image.empty()) {
     preprocess(image, criteria_.image);
@@ -110,8 +109,8 @@ bool MovementDetector::movement_detected(const cv::Mat& image, milliseconds time
   preprocess(image, current_.image);
   current_.timestamp = timestamp;
 
-  auto m = cv::mean(image);
-  auto avg = (m[0]+m[1]+m[2])/3;
+  const auto m = cv::mean(image);
+  const auto avg = (m[0]+m[1]+m[2])/3;
 
   cv::absdiff(criteria_.image, current_.image, temp_);
   cv::dilate(temp_, temp_, cv::getStructuringElement(cv::MORPH_RECT, {10, 10}));
@@ -132,6 +131,9 @@ bool MovementDetector::movement_detected(const cv::Mat& image, milliseconds time
   bbox_(movement_area);
 //  diffs_.store(std::move(movement_area));
 //  diffs_.store(temp_);
+  if (object_detected_ || timestamp > last_detection_ + run_model_override_t_) {
+    return true;
+  }
 
   return find_exceed(criteria_.image, current_.image, diff_threshold_);
 }
